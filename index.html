@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Student App Login</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    max-width: 400px;
+    margin: 3rem auto;
+    padding: 1rem;
+    background: #f9f9f9;
+    text-align: center;
+  }
+  input {
+    width: 100%;
+    padding: 0.8rem;
+    margin: 0.5rem 0;
+    font-size: 1rem;
+  }
+  button {
+    padding: 0.7rem 1.5rem;
+    font-size: 1rem;
+    cursor: pointer;
+    margin: 0.3rem;
+  }
+  #authMessage {
+    margin-top: 1rem;
+    color: red;
+  }
+</style>
+</head>
+<body>
+
+<h2>Login or Sign Up</h2>
+<input type="email" id="emailInput" placeholder="Email" />
+<input type="password" id="passwordInput" placeholder="Password" />
+<br />
+<button id="loginBtn">Log In</button>
+<button id="signupBtn">Sign Up</button>
+<div id="authMessage"></div>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyCCr4tUuAJBu5gp0R-rOmAG7uQX4EBi7NY",
+    authDomain: "student-web-35613.firebaseapp.com",
+    projectId: "student-web-35613",
+    storageBucket: "student-web-35613.appspot.com",
+    messagingSenderId: "317915060616",
+    appId: "1:317915060616:web:f5734c93083c458034023d"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+
+  const emailInput = document.getElementById('emailInput');
+  const passwordInput = document.getElementById('passwordInput');
+  const loginBtn = document.getElementById('loginBtn');
+  const signupBtn = document.getElementById('signupBtn');
+  const authMessage = document.getElementById('authMessage');
+
+  loginBtn.addEventListener('click', () => {
+    auth.signInWithEmailAndPassword(emailInput.value, passwordInput.value)
+      .then(() => {
+        authMessage.textContent = '';
+        window.location.href = "timetable.html"; // Redirect after login
+      })
+      .catch(error => {
+        authMessage.textContent = error.message;
+      });
+  });
+
+  signupBtn.addEventListener('click', () => {
+    auth.createUserWithEmailAndPassword(emailInput.value, passwordInput.value)
+      .then(() => {
+        authMessage.textContent = 'User created! You can now log in.';
+      })
+      .catch(error => {
+        authMessage.textContent = error.message;
+      });
+  });
+
+  // If user is already logged in, redirect automatically
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      window.location.href = "timetable.html";
+    }
+  });
+</script>
+
+</body>
+</html>

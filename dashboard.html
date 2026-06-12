@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(to bottom right, #4facfe, #00f2fe);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .dashboard {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 90%;
+            max-width: 500px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 25px;
+        }
+
+        .btn-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+        }
+
+        .btn {
+            background: #4facfe;
+            color: white;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background: #3b82f6;
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn i {
+            font-size: 24px;
+        }
+
+        .logout {
+            margin-top: 20px;
+            background: #ef4444;
+        }
+
+        .logout:hover {
+            background: #dc2626;
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <h1>Welcome to Dashboard</h1>
+    <div class="btn-container">
+        <button class="btn" id="timetableBtn"><i class="fa-solid fa-table"></i> Timetable</button>   
+        <button class="btn" id="attendanceBtn"><i class="fa-solid fa-calendar-check"></i> Attendance</button>
+        <button class="btn" id="notesBtn"><i class="fa-solid fa-note-sticky"></i> Notes</button>
+        <button class="btn" id="textbooksBtn"><i class="fa-solid fa-book"></i> Textbooks</button>
+    </div>
+    <button class="btn logout" id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+</div>
+
+<script>
+    document.getElementById("timetableBtn").addEventListener("click", () => {
+       window.location.href = "timetable-setup.html";
+    });
+    document.getElementById("attendanceBtn").addEventListener("click", () => {
+        window.location.href = "attendance.html";
+    });
+     
+    document.getElementById("notesBtn").addEventListener("click", () => {
+        window.location.href = "notes.html";
+    });
+    document.getElementById("textbooksBtn").addEventListener("click", () => {
+       window.location.href = "textbooks.html";
+    });
+   
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+        window.location.href = "login.html";
+    });
+</script>
+
+</body>
+</html>

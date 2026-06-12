@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Student Assistant Login</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f0f4f8;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      user-select: none;
+      color: #34495e;
+    }
+
+    .login-container {
+      background: white;
+      padding: 30px 40px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      width: 320px;
+      text-align: center;
+    }
+
+    h2 {
+      margin-bottom: 25px;
+      font-weight: 700;
+      letter-spacing: 1.1px;
+      font-size: 1.8rem;
+      color: #2c3e50;
+    }
+
+    input[type="email"],
+    input[type="password"] {
+      width: 100%;
+      padding: 12px 15px;
+      margin: 10px 0 20px 0;
+      border-radius: 8px;
+      border: 1.8px solid #bdc3c7;
+      font-size: 1rem;
+      transition: border-color 0.3s ease;
+      outline-offset: 2px;
+    }
+
+    input[type="email"]:focus,
+    input[type="password"]:focus {
+      border-color: #3498db;
+      outline: none;
+      box-shadow: 0 0 8px rgba(52, 152, 219, 0.4);
+    }
+
+    button {
+      width: 100%;
+      padding: 14px 0;
+      margin-top: 10px;
+      border: none;
+      border-radius: 30px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      color: white;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      transition: background 0.3s ease;
+      user-select: none;
+    }
+
+    #loginBtn {
+      background: linear-gradient(45deg, #2980b9, #3498db);
+    }
+    #loginBtn:hover {
+      background: linear-gradient(45deg, #1c5980, #217dbb);
+    }
+
+    #registerBtn {
+      background: linear-gradient(45deg, #27ae60, #2ecc71);
+      margin-top: 15px;
+    }
+    #registerBtn:hover {
+      background: linear-gradient(45deg, #1e8449, #27ae60);
+    }
+
+    /* Responsive tweaks */
+    @media (max-width: 360px) {
+      .login-container {
+        width: 90%;
+        padding: 25px 20px;
+      }
+
+      button {
+        font-size: 1rem;
+        padding: 12px 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <h2>Student Assistant Login</h2>
+
+    <input type="email" id="email" placeholder="Email" autocomplete="username" />
+    <input type="password" id="password" placeholder="Password" autocomplete="current-password" />
+
+    <button id="loginBtn">Login</button>
+    <button id="registerBtn">Register</button>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="firebase-config.js"></script>
+
+  <script>
+    document.getElementById("loginBtn").addEventListener("click", function() {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+
+      if (!email || !password) {
+        alert("Please enter both email and password.");
+        return;
+      }
+
+      firebase.auth().signInWithEmailAndPassword(email, password)
+        .then(() => {
+          window.location.href = "dashboard.html";
+        })
+        .catch(error => alert(error.message));
+    });
+
+    document.getElementById("registerBtn").addEventListener("click", function() {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+
+      if (!email || !password) {
+        alert("Please enter both email and password.");
+        return;
+      }
+
+      firebase.auth().createUserWithEmailAndPassword(email, password)
+        .then(() => {
+          window.location.href = "dashboard.html";
+        })
+        .catch(error => alert(error.message));
+    });
+  </script>
+</body>
+</html>

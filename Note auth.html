@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Student Notes Organizer with Auth</title>
+<style>
+    #logoutBtn {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  padding: 0.7rem 1.2rem;
+  font-size: 1.1rem;
+  background: #e53935;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  z-index: 1000;
+  display: none;
+}
+
+  body {
+    font-family: Arial, sans-serif;
+    max-width: 700px;
+    margin: 2rem auto;
+    padding: 1rem;
+    background: #f9f9f9;
+  }
+
+  h1, h2 {
+    text-align: center;
+  }
+  #authSection, #noteForm, #controls {
+    background: white;
+    padding: 1rem;
+    border-radius: 6px;
+    box-shadow: 0 0 5px #ccc;
+    margin-bottom: 1rem;
+  }
+  #authSection input, #noteForm input, #noteForm textarea, #noteForm select {
+    width: 100%;
+    margin-bottom: 0.8rem;
+    padding: 0.5rem;
+    font-size: 1rem;
+  }
+  #authSection button, #noteForm button, #controls button {
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  #notesList {
+    list-style: none;
+    padding: 0;
+  }
+  .note {
+    background: white;
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 0 5px #ccc;
+    position: relative;
+  }
+  .subject-tag {
+    display: inline-block;
+    background: #2196f3;
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
+  }
+  .note-buttons {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+  }
+  .note-buttons button {
+    background: transparent;
+    border: none;
+    color: #888;
+    margin-left: 0.5rem;
+  }
+  #controls {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  #searchInput, #filterSubject {
+    flex: 1 1 200px;
+    padding: 0.5rem;
+    font-size: 1rem;
+  }
+  #logoutBtn {
+    float: right;
+    margin-top: 4.5rem;
+    margin-bottom: 1rem;
+  }
+</style>
+</head>
+<body>
+    <button id="logoutBtn">Log Out</button>
+
+
+<h1>Student Notes Organizer</h1>
+
+<div id="authSection">
+  <h2>Login or Sign Up</h2>
+  <input type="email" id="emailInput" placeholder="Email" />
+  <input type="password" id="passwordInput" placeholder="Password" />
+  <button id="loginBtn">Log In</button>
+  <button id="signupBtn">Sign Up</button>
+  <button id="logoutBtn" style="display:none;">Log Out</button>
+  <div id="authMessage"></div>
+</div>
+
+<div id="controls" style="display:none;">
+  <input type="text" id="searchInput" placeholder="Search notes..." />
+  <select id="filterSubject">
+    <option value="">Filter by subject</option>
+    <option value="Math">Math</option>
+    <option value="Science">Science</option>
+    <option value="History">History</option>
+    <option value="English">English</option>
+    <option value="Other">Other</option>
+  </select>
+  <button id="startVoiceBtn">🎤 Voice Note</button>
+</div>
+
+<form id="noteForm" style="display:none;">
+  <input type="hidden" id="noteId" />
+  <input type="text" id="noteSubject" placeholder="Subject" required />
+  <textarea id="noteContent" rows="4" placeholder="Write your note here..." required></textarea>
+  <button type="submit">Save Note</button>
+  <button type="button" id="cancelEditBtn" style="display:none;">Cancel</button>
+</form>
+
+<ul id="notesList"></ul>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+
+<script>
+  // Replace with your Firebase project config
+  const firebaseConfig = {
+  apiKey: "AIzaSyCCr4tUuAJBu5gp0R-rOmAG7uQX4EBi7NY",
+  authDomain: "student-web-35613.firebaseapp.com",
+  projectId: "student-web-35613",
+  storageBucket: "student-web-35613.appspot.com",
+  messagingSenderId: "317915060616",
+  appId: "1:317915060616:web:f5734c93083c458034023d"
+};
+
+
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const auth = firebase.auth();
+  const notesCollection = db.collection('notes');
+
+  // Auth Elements
+  const authSection = document.getElementById('authSection');
+  const emailInput = document.getElementById('emailInput');
+  const passwordInput = document.getElementById('passwordInput');
+  const loginBtn = document.getElementById('loginBtn');
+  const signupBtn = document.getElementById('signupBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const authMessage = document.getElementById('authMessage');
+
+  // Notes Elements
+  const noteForm = document.getElementById('noteForm');
+  const noteIdInput = document.getElementById('noteId');
+  const noteSubjectInput = document.getElementById('noteSubject');
+  const noteContentInput = document.getElementById('noteContent');
+  const notesList = document.getElementById('notesList');
+  const searchInput = document.getElementById('searchInput');
+  const filterSubject = document.getElementById('filterSubject');
+  const cancelEditBtn = document.getElementById('cancelEditBtn');
+  const startVoiceBtn = document.getElementById('startVoiceBtn');
+  const controlsDiv = document.getElementById('controls');
+
+  let notes = [];
+  let unsubscribe = null;
+
+  // Authentication Handlers
+  loginBtn.onclick = () => {
+    const email = emailInput.value.trim();
+    const password = passwordInput.value.trim();
+    auth.signInWithEmailAndPassword(email, password)
+      .then(() => {
+        authMessage.textContent = 'Logged in successfully!';
+        clearAuthInputs();
+      })
+      .catch(err => {
+        authMessage.textContent = 'Login error: ' + err.message;
+      });
+  };
+
+  signupBtn.onclick = () => {
+    const email = emailInput.value.trim();
+    const password = passwordInput.value.trim();
+    auth.createUserWithEmailAndPassword(email, password)
+      .then(() => {
+        authMessage.textContent = 'User created and logged in!';
+        clearAuthInputs();
+      })
+      .catch(err => {
+        authMessage.textContent = 'Signup error: ' + err.message;
+      });
+  };
+
+  logoutBtn.onclick = () => {
+    auth.signOut();
+  };
+
+  function clearAuthInputs() {
+    emailInput.value = '';
+    passwordInput.value = '';
+  }
+
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      authSection.style.display = 'none';
+      logoutBtn.style.display = 'inline-block';
+      noteForm.style.display = 'block';
+      controlsDiv.style.display = 'flex';
+      subscribeToNotes(user.uid);
+    } else {
+      authSection.style.display = 'block';
+      logoutBtn.style.display = 'none';
+      noteForm.style.display = 'none';
+      controlsDiv.style.display = 'none';
+      notesList.innerHTML = '<li>Please log in to view your notes.</li>';
+      if (unsubscribe) unsubscribe();
+      notes = [];
+    }
+  });
+
+  // Firestore listener for user notes
+  function subscribeToNotes(uid) {
+    if (unsubscribe) unsubscribe();
+
+    unsubscribe = notesCollection.where('uid', '==', uid).onSnapshot(snapshot => {
+      notes = [];
+      snapshot.forEach(doc => {
+        notes.push({ id: doc.id, ...doc.data() });
+      });
+      renderNotes();
+    }, err => {
+      console.error('Error fetching notes:', err);
+    });
+  }
+
+  // Render notes with search and filter
+  function renderNotes() {
+    const searchTerm = searchInput.value.toLowerCase();
+    const subjectFilter = filterSubject.value;
+
+    notesList.innerHTML = '';
+
+    const filteredNotes = notes.filter(note => {
+      const matchesSearch = note.content.toLowerCase().includes(searchTerm) || note.subject.toLowerCase().includes(searchTerm);
+      const matchesSubject = subjectFilter ? note.subject === subjectFilter : true;
+      return matchesSearch && matchesSubject;
+    });
+
+    if(filteredNotes.length === 0) {
+      notesList.innerHTML = '<li>No notes found.</li>';
+      return;
+    }
+
+    filteredNotes.forEach(note => {
+      const li = document.createElement('li');
+      li.className = 'note';
+
+      const subjectTag = document.createElement('div');
+      subjectTag.className = 'subject-tag';
+      subjectTag.textContent = note.subject;
+
+      const content = document.createElement('div');
+      content.textContent = note.content;
+
+      const btns = document.createElement('div');
+      btns.className = 'note-buttons';
+
+      const editBtn = document.createElement('button');
+      editBtn.textContent = '✏️';
+      editBtn.title = 'Edit Note';
+      editBtn.onclick = () => startEdit(note.id);
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = '🗑️';
+      deleteBtn.title = 'Delete Note';
+      deleteBtn.onclick = () => deleteNote(note.id);
+
+      btns.appendChild(editBtn);
+      btns.appendChild(deleteBtn);
+
+      li.appendChild(subjectTag);
+      li.appendChild(content);
+      li.appendChild(btns);
+
+      notesList.appendChild(li);
+    });
+  }
+
+  function startEdit(id) {
+    const note = notes.find(n => n.id === id);
+    if (!note) return;
+    noteIdInput.value = note.id;
+    noteSubjectInput.value = note.subject;
+    noteContentInput.value = note.content;
+    cancelEditBtn.style.display = 'inline-block';
+  }
+
+  async function deleteNote(id) {
+    if (!confirm('Delete this note?')) return;
+    try {
+      await notesCollection.doc(id).delete();
+    } catch (err) {
+      alert('Error deleting note: ' + err.message);
+    }
+  }
+
+  noteForm.addEventListener('submit', async e => {
+    e.preventDefault();
+
+    const id = noteIdInput.value;
+    const subject = noteSubjectInput.value.trim();
+    const content = noteContentInput.value.trim();
+
+    if (!subject || !content) return alert('Please fill subject and content.');
+
+    const user = auth.currentUser;
+    if (!user) return alert('User not authenticated.');
+
+    try {
+      if (id) {
+        await notesCollection.doc(id).set({ subject, content, uid: user.uid });
+      } else {
+        await notesCollection.add({ subject, content, uid: user.uid });
+      }
+      noteForm.reset();
+      cancelEditBtn.style.display = 'none';
+      noteIdInput.value = '';
+    } catch (err) {
+      alert('Error saving note: ' + err.message);
+    }
+  });
+
+  cancelEditBtn.addEventListener('click', () => {
+    noteForm.reset();
+    noteIdInput.value = '';
+    cancelEditBtn.style.display = 'none';
+  });
+
+  searchInput.addEventListener('input', renderNotes);
+  filterSubject.addEventListener('change', renderNotes);
+
+  // Voice to Text Note creation using Web Speech API
+  let recognition;
+  if ('webkitSpeechRecognition' in window) {
+    recognition = new webkitSpeechRecognition();
+    recognition.continuous = false;
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+
+    recognition.onresult = function(event) {
+      const transcript = event.results[0][0].transcript;
+      noteContentInput.value += (noteContentInput.value ? ' ' : '') + transcript;
+    };
+
+    recognition.onerror = function(event) {
+      alert('Voice recognition error: ' + event.error);
+    };
+  } else {
+    startVoiceBtn.disabled = true;
+    startVoiceBtn.title = "Voice recognition not supported in this browser";
+  }
+
+  startVoiceBtn.addEventListener('click', () => {
+    if (!recognition) return;
+    recognition.start();
+  });
+</script>
+
+</body>
+</html>

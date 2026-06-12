@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>📚 Textbooks</title>
+<style>
+  body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: linear-gradient(135deg, #eef2f3, #d9e4ec);
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+  }
+  .container {
+    background: #fff;
+    border-radius: 12px;
+    padding: 30px;
+    max-width: 600px;
+    width: 100%;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    text-align: center;
+  }
+  h2 { color: #222; margin-bottom: 20px; }
+  input, button {
+    margin: 10px 0;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    width: 100%;
+    font-size: 15px;
+  }
+  input:focus { outline: none; border-color: #007BFF; box-shadow: 0 0 6px rgba(0,123,255,0.3); }
+  button {
+    background: #007BFF;
+    color: white;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  button:hover { background: #0056b3; }
+  .message {
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 6px;
+    display: none;
+    font-size: 14px;
+  }
+  .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+  .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+  h3 { margin-top: 25px; color: #444; }
+  #searchInput { margin-bottom: 10px; }
+  ul { list-style: none; padding: 0; margin-top: 15px; text-align: left; }
+  li {
+    background: #f1f1f1;
+    margin-bottom: 8px;
+    padding: 10px;
+    border-radius: 6px;
+    position: relative;
+  }
+  li a { color: #007BFF; text-decoration: none; font-weight: 500; }
+  li a:hover { text-decoration: underline; }
+  li button.delete-btn {
+    float: right;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 5px 10px;
+    cursor: pointer;
+  }
+ /* Tooltip with fade effect */
+li .tooltip {
+  visibility: hidden;
+  opacity: 0;
+  background: #333;
+  color: #fff;
+  text-align: left;
+  padding: 8px;
+  border-radius: 6px;
+  position: absolute;
+  top: 50%;
+  left: 105%;
+  transform: translateY(-50%);
+  z-index: 1;
+  width: 220px;
+  font-size: 13px;
+  line-height: 1.4;
+  transition: opacity 0.3s ease; /* fade effect */
+}
+
+li:hover .tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+
+  }
+  li:hover .tooltip { visibility: visible; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>📚 Upload Textbooks</h2>
+  <input type="file" id="fileInput" />
+  <input type="text" id="subjectInput" placeholder="Enter subject" />
+  <button id="uploadBtn">Upload</button>
+
+  <div id="messageBox" class="message"></div>
+
+  <h3>Uploaded Files</h3>
+  <input type="text" id="searchInput" placeholder="Search by subject..." />
+  <ul id="fileList" class="file-list"><li>Loading...</li></ul>
+  <button id="deleteDuplicatesBtn" style="margin-top:15px; background:#ff9900;">Delete All Duplicates</button>
+</div>
+
+<script src="https://unpkg.com/@supabase/supabase-js"></script>
+<script>
+const SUPABASE_URL = "https://xylvnvayvwcsxhiazfvn.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5bHZudmF5dndjc3hoaWF6ZnZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwMTAzMTgsImV4cCI6MjA3MDU4NjMxOH0._jICgcmUhEMo9ADY5WYX6U3BUo5a0r0544sb_cq0Ntk";
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const fileInput = document.getElementById("fileInput");
+const subjectInput = document.getElementById("subjectInput");
+const uploadBtn = document.getElementById("uploadBtn");
+const messageBox = document.getElementById("messageBox");
+const fileList = document.getElementById("fileList");
+const searchInput = document.getElementById("searchInput");
+const deleteDuplicatesBtn = document.getElementById("deleteDuplicatesBtn");
+
+// Show message
+function showMessage(msg, type) {
+  messageBox.textContent = msg;
+  messageBox.className = "message " + type;
+  messageBox.style.display = "block";
+}
+
+// Upload file
+uploadBtn.addEventListener("click", async () => {
+  const file = fileInput.files[0];
+  const subject = subjectInput.value.trim();
+  if (!file || !subject) {
+    showMessage("❌ Please select a file and enter subject.", "error");
+    return;
+  }
+
+  // Block video and image files
+  const blockedTypes = ["image/", "video/"];
+  if (blockedTypes.some(type => file.type.startsWith(type))) {
+    showMessage("❌ Video and image files are not allowed.", "error");
+    return;
+  }
+
+  showMessage("Uploading...", "success");
+
+  const filePath = `uploads/${Date.now()}_${file.name}`;
+  const { data, error } = await client.storage.from("textbooks").upload(filePath, file, { upsert: true });
+
+  if (error) {
+    showMessage("❌ Upload failed: " + error.message, "error");
+    return;
+  }
+
+  const { data: publicData } = client.storage.from("textbooks").getPublicUrl(filePath);
+  const { error: dbError } = await client.from("textbooks").insert([{
+    name: file.name,
+    subject: subject,
+    url: publicData.publicUrl,
+    path: filePath,
+    type: file.type,
+    size: file.size,
+    created_at: new Date().toISOString()
+  }]);
+
+  if (dbError) {
+    showMessage("❌ Error saving to DB: " + dbError.message, "error");
+  } else {
+    showMessage("Uploaded ✅", "success");
+    fileInput.value = "";
+    subjectInput.value = "";
+    fetchFiles();
+  }
+});
+
+// Fetch files
+async function fetchFiles() {
+  fileList.innerHTML = "<li>Loading...</li>";
+  const { data, error } = await client.from("textbooks").select("*").order("id", { ascending: false });
+  if (error) return;
+  fileList.innerHTML = "";
+
+  data.forEach(item => {
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <b>${item.subject}</b> - 
+      <a href="${item.url}" target="_blank">${item.name}</a>
+      <button class="delete-btn">🗑 Delete</button>
+      <div class="tooltip">
+        <b>Subject:</b> ${item.subject}<br>
+        <b>Type:</b> ${item.type}<br>
+        <b>Size:</b> ${formatBytes(item.size)}<br>
+        <b>Uploaded:</b> ${new Date(item.created_at).toLocaleString()}
+      </div>
+    `;
+
+    // Delete single file
+    li.querySelector(".delete-btn").addEventListener("click", async () => {
+      if (!confirm(`Delete "${item.name}"?`)) return;
+      const { error: delErr } = await client.storage.from("textbooks").remove([item.path]);
+      if (delErr) { showMessage("❌ Failed to delete file: " + delErr.message, "error"); return; }
+      await client.from("textbooks").delete().eq("id", item.id);
+      showMessage("✅ File deleted.", "success");
+      fetchFiles();
+    });
+
+    fileList.appendChild(li);
+  });
+}
+
+// Format bytes
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Search/filter
+searchInput.addEventListener("input", (e) => {
+  const term = e.target.value.toLowerCase();
+  document.querySelectorAll("#fileList li").forEach(li => {
+    li.style.display = li.textContent.toLowerCase().includes(term) ? "block" : "none";
+  });
+});
+
+// Delete all duplicates
+deleteDuplicatesBtn.addEventListener("click", async () => {
+  if (!confirm("Delete all duplicate files?")) return;
+  const { data } = await client.from("textbooks").select("*");
+  const seen = new Set();
+  const duplicates = data.filter(item => {
+    if (seen.has(item.name)) return true;
+    seen.add(item.name);
+    return false;
+  });
+
+  for (let item of duplicates) {
+    await client.storage.from("textbooks").remove([item.path]);
+    await client.from("textbooks").delete().eq("id", item.id);
+  }
+  showMessage("✅ Duplicates deleted.", "success");
+  fetchFiles();
+});
+
+fetchFiles();
+</script>
+</body>
+</html>

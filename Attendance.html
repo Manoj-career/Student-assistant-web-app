@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Attendance Tracker</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; max-width: 600px; }
+    h2 { text-align: center; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-top: 20px;
+    }
+    .period {
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 15px;
+      text-align: center;
+      user-select: none;
+    }
+    .subject-name {
+      font-weight: bold;
+      margin-bottom: 10px;
+      font-size: 1.1rem;
+    }
+    button.toggle {
+      width: 100px;
+      padding: 8px;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button.present {
+      background-color: #4CAF50;
+      color: white;
+    }
+    button.absent {
+      background-color: #f44336;
+      color: white;
+    }
+    #saveBtn, #setDayOrderBtn {
+      margin-top: 30px;
+      width: 100%;
+      padding: 12px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      background-color: #2196F3;
+      color: white;
+    }
+    #dayOrderSelect {
+      display: none;
+      margin-top: 15px;
+      width: 100%;
+      padding: 10px;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+<h2 id="pageTitle">Mark Attendance</h2>
+<div class="grid" id="periodsGrid"></div>
+
+<select id="dayOrderSelect">
+  <option value="">-- Select Day Order --</option>
+  <option value="1">Day 1</option>
+  <option value="2">Day 2</option>
+  <option value="3">Day 3</option>
+  <option value="4">Day 4</option>
+  <option value="5">Day 5</option>
+  <option value="6">Day 6</option>
+</select>
+
+<button id="saveBtn">Save Attendance</button>
+<button id="setDayOrderBtn" style="display:none;">Set Day Order for Today</button>
+<button id="calcPercentageBtn" style="margin-top:15px; width:100%; padding:12px; font-size:1.1rem; background-color:#4CAF50; color:white; border:none; border-radius:8px; cursor:pointer;">
+  View Attendance %
+</button>
+
+
+<script>
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyCCr4tUuAJBu5gp0R-rOmAG7uQX4EBi7NY",
+    authDomain: "student-web-35613.firebaseapp.com",
+    projectId: "student-web-35613",
+    storageBucket: "student-web-35613.appspot.com",
+    messagingSenderId: "317915060616",
+    appId: "1:317915060616:web:f5734c93083c458034023d"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  const periodsGrid = document.getElementById("periodsGrid");
+  const saveBtn = document.getElementById("saveBtn");
+  const pageTitle = document.getElementById("pageTitle");
+  const setDayOrderBtn = document.getElementById("setDayOrderBtn");
+  const dayOrderSelect = document.getElementById("dayOrderSelect");
+
+  const attendanceStatus = {};
+
+  function formatDate(date) {
+    const d = new Date(date);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function isHoliday(date, saturdayWorking) {
+    const day = date.getDay(); // 0=Sunday, 6=Saturday
+    if (day === 0) return true;
+    if (day === 6 && !saturdayWorking) return true;
+    return false;
+  }
+
+  function renderPeriods(timetable, currentDayOrder) {
+    periodsGrid.innerHTML = "";
+    pageTitle.textContent = `Mark Attendance (Day ${currentDayOrder})`;
+
+    const todayPeriods = timetable[`day${currentDayOrder}`] || {};
+    for (let i = 1; i <= 5; i++) {
+      const subject = todayPeriods[`period${i}`] || "No subject";
+      attendanceStatus[`period${i}`] = "absent";
+
+      const div = document.createElement("div");
+      div.className = "period";
+
+      const subjectDiv = document.createElement("div");
+      subjectDiv.className = "subject-name";
+      subjectDiv.textContent = `Period ${i}: ${subject}`;
+
+      const btn = document.createElement("button");
+      btn.className = "toggle absent";
+      btn.textContent = "Absent";
+      btn.onclick = () => {
+        if (attendanceStatus[`period${i}`] === "absent") {
+          attendanceStatus[`period${i}`] = "present";
+          btn.textContent = "Present";
+          btn.classList.remove("absent");
+          btn.classList.add("present");
+        } else {
+          attendanceStatus[`period${i}`] = "absent";
+          btn.textContent = "Absent";
+          btn.classList.remove("present");
+          btn.classList.add("absent");
+        }
+      };
+
+      div.appendChild(subjectDiv);
+      div.appendChild(btn);
+      periodsGrid.appendChild(div);
+    }
+  }
+
+  function saveAttendance(userId, currentDayOrder, saturdayWorking) {
+    const dateKey = formatDate(new Date());
+    const attendanceDoc = db.collection("attendance").doc(userId).collection("dates").doc(dateKey);
+
+    return attendanceDoc.set({
+      ...attendanceStatus,
+      dayOrder: currentDayOrder
+    }).then(() => {
+      let nextDay = new Date();
+      nextDay.setDate(nextDay.getDate() + 1);
+
+      while (isHoliday(nextDay, saturdayWorking)) {
+        nextDay.setDate(nextDay.getDate() + 1);
+      }
+
+      let newDayOrder = currentDayOrder + 1;
+      if (newDayOrder > 6) newDayOrder = 1;
+
+      return db.collection("users").doc(userId).set({
+        currentDayOrder: newDayOrder,
+        lastUpdated: formatDate(nextDay)
+      }, { merge: true });
+    });
+  }
+
+  auth.onAuthStateChanged(user => {
+    if (!user) {
+      window.location.href = "index.html";
+      return;
+    }
+
+    db.collection("timetables").doc(user.uid).get().then(ttDoc => {
+      if (!ttDoc.exists) {
+        alert("Please complete timetable setup first.");
+        window.location.href = "setup.html";
+        return;
+      }
+
+      db.collection("users").doc(user.uid).get().then(userDoc => {
+        const userData = userDoc.exists ? userDoc.data() : {};
+        const saturdayWorking = userData.saturdayWorking ?? false;
+        let currentDayOrder = userData.currentDayOrder || 1;
+
+        const today = new Date();
+        if (isHoliday(today, saturdayWorking)) {
+          pageTitle.textContent = "Today is a Holiday 🎉";
+          periodsGrid.innerHTML = "";
+          saveBtn.style.display = "none";
+          setDayOrderBtn.style.display = "block";
+          dayOrderSelect.style.display = "block";
+
+          setDayOrderBtn.onclick = () => {
+            const selectedOrder = parseInt(dayOrderSelect.value);
+            if (!selectedOrder) {
+              alert("Please select a day order.");
+              return;
+            }
+            db.collection("users").doc(user.uid).set({
+              currentDayOrder: selectedOrder,
+              lastUpdated: formatDate(today)
+            }, { merge: true }).then(() => {
+              alert("Day order updated!");
+              location.reload();
+            });
+          };
+
+          return;
+        }
+
+        renderPeriods(ttDoc.data(), currentDayOrder);
+
+        saveBtn.onclick = () => {
+          saveAttendance(user.uid, currentDayOrder, saturdayWorking)
+            .then(() => {
+              alert("Attendance saved!");
+              window.location.href = "notes.html";
+            })
+            .catch(err => alert("Error saving: " + err.message));
+        };
+      });
+    });
+  });
+  // View Attendance perecntage
+  const calcBtn = document.getElementById("calcPercentageBtn");
+
+calcBtn.onclick = async () => {
+  const user = auth.currentUser;
+  if (!user) {
+    alert("You must be logged in.");
+    return;
+  }
+
+  try {
+    const snapshot = await db.collection("attendance").doc(user.uid).collection("dates").get();
+
+    let presentCount = 0;
+    let totalCount = 0;
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      for (let i = 1; i <= 6; i++) {
+        const key = `period${i}`;
+        if (data[key]) {
+          totalCount++;
+          if (data[key] === "present") presentCount++;
+        }
+      }
+    });
+
+    if (totalCount === 0) {
+      alert("No attendance records found yet.");
+      return;
+    }
+
+    const percentage = ((presentCount / totalCount) * 100).toFixed(2);
+    alert(`Your Attendance Percentage: ${percentage}%\n(${presentCount}/${totalCount} periods present)`);
+  } catch (err) {
+    alert("Error calculating percentage: " + err.message);
+  }
+};
+
+</script>
+
+</body>
+</html>

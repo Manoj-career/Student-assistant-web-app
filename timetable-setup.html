@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timetable Setup</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f8fb;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    .day {
+      background: white;
+      padding: 20px;
+      margin: 20px auto;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      max-width: 700px;
+    }
+    h2 {
+      color: #444;
+      margin-bottom: 15px;
+    }
+    .period {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+      gap: 10px;
+    }
+    .period input {
+      flex: 1;
+      padding: 8px;
+      border: 1.5px solid #ccc;
+      border-radius: 6px;
+    }
+    .combine {
+      margin-left: 10px;
+      cursor: pointer;
+      font-size: 0.9em;
+      color: #007BFF;
+    }
+    .undo {
+      margin-left: 10px;
+      cursor: pointer;
+      font-size: 0.9em;
+      color: #dc3545;
+    }
+    button {
+      display: block;
+      margin: 30px auto;
+      padding: 12px 25px;
+      background: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <h1>Set Up Your Timetable</h1>
+
+  <form id="timetableForm"></form>
+  <button type="button" onclick="saveTimetable()">Save Timetable</button>
+
+  <script>
+    const form = document.getElementById("timetableForm");
+
+    // Renders 6 days × 6 periods
+    function renderTimetable() {
+      for (let d = 1; d <= 6; d++) {
+        const dayDiv = document.createElement("div");
+        dayDiv.className = "day";
+        dayDiv.innerHTML = `<h2>Day ${d}</h2>`;
+
+        for (let p = 1; p <= 6; p++) {
+          const periodDiv = document.createElement("div");
+          periodDiv.className = "period";
+          periodDiv.innerHTML = `
+            <label>Period ${p}:</label>
+            <input type="text" id="day${d}_p${p}" placeholder="Enter subject" />
+            <span class="combine" onclick="combinePeriods(${d},${p})">➕ Combine Next</span>
+            <span class="undo" onclick="undoCombine(${d},${p})">↩ Undo</span>
+          `;
+          dayDiv.appendChild(periodDiv);
+        }
+        form.appendChild(dayDiv);
+      }
+
+      // Add Enter key navigation
+      const inputs = document.querySelectorAll(".period input");
+      inputs.forEach((input, index) => {
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            const nextInput = inputs[index + 1];
+            if (nextInput && !nextInput.disabled) {
+              nextInput.focus();
+            }
+          }
+        });
+      });
+    }
+
+    // Combine consecutive periods
+    function combinePeriods(day, period) {
+      const current = document.getElementById(`day${day}_p${period}`);
+      const next = document.getElementById(`day${day}_p${period + 1}`);
+      if (next) {
+        current.value = current.value ? current.value : next.value;
+        next.value = current.value;
+        next.disabled = true;
+        alert(`Period ${period} & ${period + 1} combined for Day ${day}`);
+      }
+    }
+
+    // Undo combine
+    function undoCombine(day, period) {
+      const next = document.getElementById(`day${day}_p${period + 1}`);
+      if (next && next.disabled) {
+        next.disabled = false;
+        next.value = "";
+        alert(`Period ${period + 1} restored for Day ${day}`);
+      }
+    }
+
+    // Save timetable to localStorage
+    function saveTimetable() {
+      const timetable = {};
+      for (let d = 1; d <= 6; d++) {
+        timetable[`day${d}`] = {};
+        for (let p = 1; p <= 6; p++) {
+          const input = document.getElementById(`day${d}_p${p}`);
+          timetable[`day${d}`][`period${p}`] = input.value;
+        }
+      }
+      localStorage.setItem("timetable", JSON.stringify(timetable));
+      alert("Timetable saved successfully!");
+      window.location.href = "attendance.html";
+    }
+
+    renderTimetable();
+  </script>
+</body>
+</html>

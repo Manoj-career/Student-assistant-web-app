@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Student Notes Organizer with Firebase</title>
+<style>
+  /* Reset & base */
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    max-width: 700px;
+    margin: 2rem auto;
+    padding: 1.5rem 1rem 3rem;
+    background: #f5f8fa;
+    color: #2c3e50;
+    user-select: none;
+  }
+
+  h1 {
+    position: relative;
+    text-align: center;
+    font-weight: 700;
+    font-size: 2.2rem;
+    margin-bottom: 1.8rem;
+    color: #34495e;
+    letter-spacing: 1.1px;
+  }
+
+  #logoutBtn {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    margin-right: 1rem;
+    padding: 0.5rem 1.2rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    background: #e74c3c;
+    border: none;
+    border-radius: 25px;
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 3px 10px rgba(231, 76, 60, 0.4);
+    transition: background-color 0.3s ease;
+    user-select: none;
+  }
+  #logoutBtn:hover {
+    background-color: #c0392b;
+  }
+
+  #controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    justify-content: center;
+  }
+
+  #searchInput, #filterSubject {
+    flex: 1 1 220px;
+    padding: 0.55rem 1rem;
+    font-size: 1.05rem;
+    border-radius: 8px;
+    border: 1.8px solid #bdc3c7;
+    transition: border-color 0.3s ease;
+  }
+  #searchInput:focus, #filterSubject:focus {
+    border-color: #3498db;
+    outline: none;
+    box-shadow: 0 0 8px rgba(52, 152, 219, 0.3);
+  }
+
+  #startVoiceBtn {
+    padding: 0 20px;
+    font-size: 1.3rem;
+    background: #3498db;
+    color: white;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    font-weight: 700;
+    box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+    transition: background-color 0.3s ease;
+    user-select: none;
+  }
+  #startVoiceBtn:hover:not(:disabled) {
+    background-color: #217dbb;
+  }
+  #startVoiceBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  #noteForm {
+    background: white;
+    padding: 1.5rem 1.8rem;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    margin-bottom: 2.5rem;
+    max-width: 100%;
+  }
+
+  #noteForm input, #noteForm textarea, #noteForm select {
+    width: 100%;
+    margin-bottom: 1.1rem;
+    padding: 0.65rem 1rem;
+    font-size: 1.05rem;
+    border-radius: 8px;
+    border: 1.8px solid #bdc3c7;
+    transition: border-color 0.3s ease;
+    resize: vertical;
+  }
+  #noteForm input:focus, #noteForm textarea:focus, #noteForm select:focus {
+    border-color: #3498db;
+    outline: none;
+    box-shadow: 0 0 8px rgba(52, 152, 219, 0.3);
+  }
+
+  #noteForm button[type="submit"],
+  #cancelEditBtn {
+    padding: 12px 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    width: 100%;
+    user-select: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transition: background-color 0.3s ease;
+  }
+  #noteForm button[type="submit"] {
+    background: linear-gradient(45deg, #27ae60, #2ecc71);
+    color: white;
+    margin-bottom: 0.8rem;
+  }
+  #noteForm button[type="submit"]:hover {
+    background: linear-gradient(45deg, #1e8449, #27ae60);
+  }
+  #cancelEditBtn {
+    background: #e74c3c;
+    color: white;
+    display: none;
+  }
+  #cancelEditBtn:hover {
+    background: #c0392b;
+  }
+
+  #notesList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .note {
+    background: white;
+    border-radius: 12px;
+    padding: 1.2rem 1.5rem;
+    margin-bottom: 1.4rem;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+    position: relative;
+    transition: box-shadow 0.3s ease;
+  }
+  .note:hover {
+    box-shadow: 0 8px 18px rgba(0,0,0,0.1);
+  }
+
+  .subject-tag {
+    display: inline-block;
+    background: #3498db;
+    color: white;
+    padding: 0.3rem 0.75rem;
+    border-radius: 15px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 0.6rem;
+    user-select: none;
+  }
+
+  .note-buttons {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+  }
+  .note-buttons button {
+    background: transparent;
+    border: none;
+    color: #7f8c8d;
+    font-size: 1.3rem;
+    margin-left: 0.6rem;
+    cursor: pointer;
+    transition: color 0.3s ease;
+    user-select: none;
+  }
+  .note-buttons button:hover {
+    color: #34495e;
+  }
+
+  /* Responsive */
+  @media (max-width: 480px) {
+    body {
+      margin: 1rem 0.5rem 2rem;
+      padding: 0 0.5rem;
+    }
+    #controls {
+      flex-direction: column;
+      gap: 0.9rem;
+    }
+    #searchInput, #filterSubject, #startVoiceBtn {
+      flex: 1 1 100%;
+    }
+  }
+</style>
+</head>
+<body>
+
+<h1>
+  Student Notes Organizer
+  <button id="logoutBtn" title="Log Out">Log Out</button>
+</h1>
+
+<div id="controls">
+  <input type="text" id="searchInput" placeholder="Search notes..." aria-label="Search notes" />
+  <select id="filterSubject" aria-label="Filter notes by subject">
+    <option value="">Filter by subject</option>
+    <option value="Math">Python</option>
+    <option value="Science">Case Tools</option>
+    <option value="History">RDBMS</option>
+    <option value="English">Visula basics</option>
+    <option value="Other">Other</option>
+  </select>
+  <button id="startVoiceBtn" title="Start voice note">🎤 Voice Note</button>
+</div>
+
+<form id="noteForm" aria-label="Add or edit note form">
+  <input type="hidden" id="noteId" />
+  <input type="text" id="noteSubject" placeholder="Subject" required aria-required="true" />
+  <textarea id="noteContent" rows="4" placeholder="Write your note here..." required aria-required="true"></textarea>
+  <button type="submit">Save Note</button>
+  <button type="button" id="cancelEditBtn" style="display:none;">Cancel</button>
+</form>
+
+<ul id="notesList" aria-live="polite" aria-relevant="additions removals"></ul>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+
+<script>
+  // Your existing JS code here (unchanged)...
+  const firebaseConfig = {
+    apiKey: "AIzaSyCCr4tUuAJBu5gp0R-rOmAG7uQX4EBi7NY",
+    authDomain: "student-web-35613.firebaseapp.com",
+    projectId: "student-web-35613",
+    storageBucket: "student-web-35613.appspot.com",
+    messagingSenderId: "317915060616",
+    appId: "1:317915060616:web:f5734c93083c458034023d"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const auth = firebase.auth();
+  const notesCollection = db.collection('notes');
+
+  const noteForm = document.getElementById('noteForm');
+  const noteIdInput = document.getElementById('noteId');
+  const noteSubjectInput = document.getElementById('noteSubject');
+  const noteContentInput = document.getElementById('noteContent');
+  const notesList = document.getElementById('notesList');
+  const searchInput = document.getElementById('searchInput');
+  const filterSubject = document.getElementById('filterSubject');
+  const cancelEditBtn = document.getElementById('cancelEditBtn');
+  const startVoiceBtn = document.getElementById('startVoiceBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  let notes = [];
+
+  // Logout button functionality
+  logoutBtn.addEventListener('click', () => {
+    auth.signOut().then(() => {
+      window.location.href = "login.html"; // Redirect to login page
+    }).catch(err => {
+      alert('Logout failed: ' + err.message);
+    });
+  });
+
+  // Subscribe to notes for current user
+  function subscribeToNotes(user) {
+    notesCollection.where('userId', '==', user.uid)
+      .onSnapshot(snapshot => {
+        notes = [];
+        snapshot.forEach(doc => {
+          notes.push({ id: doc.id, ...doc.data() });
+        });
+        renderNotes();
+      }, err => {
+        console.error('Error fetching notes:', err);
+      });
+  }
+
+  // Render notes based on search & filter
+  function renderNotes() {
+    const searchTerm = searchInput.value.toLowerCase();
+    const subjectFilter = filterSubject.value;
+
+    notesList.innerHTML = '';
+
+    const filteredNotes = notes.filter(note => {
+      const matchesSearch = note.content.toLowerCase().includes(searchTerm) || note.subject.toLowerCase().includes(searchTerm);
+      const matchesSubject = subjectFilter ? note.subject === subjectFilter : true;
+      return matchesSearch && matchesSubject;
+    });
+
+    if (filteredNotes.length === 0) {
+      notesList.innerHTML = '<li style="color:#7f8c8d; text-align:center; padding:1rem;">No notes found.</li>';
+      return;
+    }
+
+    filteredNotes.forEach(note => {
+      const li = document.createElement('li');
+      li.className = 'note';
+
+      const subjectTag = document.createElement('div');
+      subjectTag.className = 'subject-tag';
+      subjectTag.textContent = note.subject;
+
+      const content = document.createElement('div');
+      content.textContent = note.content;
+
+      const btns = document.createElement('div');
+      btns.className = 'note-buttons';
+
+      const editBtn = document.createElement('button');
+      editBtn.textContent = '✏️';
+      editBtn.title = 'Edit Note';
+      editBtn.onclick = () => startEdit(note.id);
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = '🗑️';
+      deleteBtn.title = 'Delete Note';
+      deleteBtn.onclick = () => deleteNote(note.id);
+
+      btns.appendChild(editBtn);
+      btns.appendChild(deleteBtn);
+
+      li.appendChild(subjectTag);
+      li.appendChild(content);
+      li.appendChild(btns);
+
+      notesList.appendChild(li);
+    });
+  }
+
+  function startEdit(id) {
+    const note = notes.find(n => n.id === id);
+    if (!note) return;
+    noteIdInput.value = note.id;
+    noteSubjectInput.value = note.subject;
+    noteContentInput.value = note.content;
+    cancelEditBtn.style.display = 'inline-block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function deleteNote(id) {
+    if (!confirm('Delete this note?')) return;
+    try {
+      await notesCollection.doc(id).delete();
+    } catch (err) {
+      alert('Error deleting note: ' + err.message);
+    }
+  }
+
+  noteForm.addEventListener('submit', async e => {
+    e.preventDefault();
+
+    const id = noteIdInput.value;
+    const subject = noteSubjectInput.value.trim();
+    const content = noteContentInput.value.trim();
+
+    if (!subject || !content) return alert('Please fill subject and content.');
+
+    const user = auth.currentUser;
+    if (!user) return alert('Not authenticated');
+
+    try {
+      if (id) {
+        await notesCollection.doc(id).set({ subject, content, userId: user.uid });
+      } else {
+        await notesCollection.add({ subject, content, userId: user.uid });
+      }
+      noteForm.reset();
+      cancelEditBtn.style.display = 'none';
+      noteIdInput.value = '';
+    } catch (err) {
+      alert('Error saving note: ' + err.message);
+    }
+  });
+
+  cancelEditBtn.addEventListener('click', () => {
+    noteForm.reset();
+    noteIdInput.value = '';
+    cancelEditBtn.style.display = 'none';
+  });
+
+  searchInput.addEventListener('input', renderNotes);
+  filterSubject.addEventListener('change', renderNotes);
+
+  // Voice to Text Note creation using Web Speech API
+  let recognition;
+  if ('webkitSpeechRecognition' in window) {
+    recognition = new webkitSpeechRecognition();
+    recognition.continuous = false;
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+
+    recognition.onresult = function(event) {
+      const transcript = event.results[0][0].transcript;
+      noteContentInput.value += (noteContentInput.value ? ' ' : '') + transcript;
+      noteContentInput.focus();
+    };
+
+    recognition.onerror = function(event) {
+      alert('Voice recognition error: ' + event.error);
+    };
+  } else {
+    startVoiceBtn.disabled = true;
+    startVoiceBtn.title = "Voice recognition not supported in this browser";
+  }
+
+  startVoiceBtn.addEventListener('click', () => {
+    if (!recognition) return;
+    recognition.start();
+  });
+
+  // Auth state listener - redirect to login if NOT logged in, else subscribe to notes
+  auth.onAuthStateChanged(user => {
+    if (!user) {
+      window.location.href = "index.html"; // send to login page
+    } else {
+      subscribeToNotes(user);
+    }
+  });
+</script>
+
+</body>
+</html>
